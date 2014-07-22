@@ -4,6 +4,11 @@
     "version":"0.0.1",
     "dependencies": {
         "express": "*",
-        "underscore": "*"
+        "body-parser": "*",
+        "express3-handlebars": "*",
+        "underscore": "*",
+        "xml2js": "*",
+        "libxmljs": "*",
+        "node-uuid": "*"
     }
 }

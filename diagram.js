@@ -127,7 +127,6 @@ var Diagram = function() {
         var sentences = [];
         var finished = false;
         var num_variations = this._number_of_varations(root_node);
-        console.log(num_variations);
 
         var i = 0;
         for (i=0; i<num_variations; i+=1) {
@@ -138,6 +137,8 @@ var Diagram = function() {
 
         return sentences.filter(function(elem, i) {
             return sentences.indexOf(elem) === i;
+        }).map(function(elem) {
+            return elem.replace(/\s+/g, ' ');
         });
     };
 
@@ -201,14 +202,14 @@ var Diagram = function() {
 
         var i = 0;
         for (i=0; i<num_choices; i+=1) {
-            sets[i] = current_sentences.slice(split*i, split*(i+1));
-            sets[i] = this._add_node(p.value[i], sets[i]);
+            var temp = current_sentences.slice(split*i, split*(i+1));
+            sets[i] = this._add_node(p.value[i], temp);
         }
 
         var j = 0;
-        for (i=0; i<split; i+=(num_choices)) {
+        for (i=0; i<=split; i+=(num_choices)) {
             for (j=0; j<num_choices; j+=1) {
-                current_sentences[i+j] = sets[j][i];
+                current_sentences[i+j] = sets[j][i/num_choices];
             }
         }
 
