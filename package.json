@@ -1,0 +1,9 @@
+{
+    "name":"vanl",
+    "description":"Generate many combinations of commands for a more natural interaction with Voice Attack.",
+    "version":"0.0.1",
+    "dependencies": {
+        "express": "*",
+        "underscore": "*"
+    }
+}
