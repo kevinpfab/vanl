@@ -71,7 +71,7 @@ var Diagram = function() {
                 var choices = contents.split(',');
                 tokens.push({
                     type: 'choice',
-                    value: choices.map(this._parse)
+                    value: choices.map(this._parse.bind(this))
                 });
 
                 i += exit;
@@ -123,10 +123,10 @@ var Diagram = function() {
     // }}}
 
     // {{{ _generate
-    self._generate = function(parsed) {
+    self._generate = function(root_node) {
         var sentences = [];
         var finished = false;
-        var num_variations = this._number_of_varations(parsed);
+        var num_variations = this._number_of_varations(root_node);
         console.log(num_variations);
 
         var i = 0;
@@ -134,24 +134,30 @@ var Diagram = function() {
             sentences[i] = "";
         }
 
-        return this.tester(parsed, sentences);
+        sentences = this._add_node(root_node, sentences);
+
+        return sentences.filter(function(elem, i) {
+            return sentences.indexOf(elem) === i;
+        });
     };
 
     // }}}
-    // {{{ tester
-    self.tester = function(p, current_sentences) {
-        var to_s = Object.prototype.toString.call(p);
+    // {{{ _add_node
+    self._add_node = function(node, current_sentences) {
+        var to_s = Object.prototype.toString.call(node);
         if (to_s == '[object Array]') {
             var i = 0;
-            for (i=0; i<p.length; i+=1) {
-                current_sentences = this.tester(p[i], current_sentences);
+            for (i=0; i<node.length; i+=1) {
+                current_sentences = this._add_node(node[i], current_sentences);
             }
         } else if (to_s == '[object String]') {
-            current_sentences = this._add_string(p, current_sentences);
-        } else if (p.type === 'string') {
-            current_sentences = this._add_string(p.value, current_sentences);
-        } else if (p.type === 'optional') {
-            current_sentences = this._add_optional(p, current_sentences);
+            current_sentences = this._add_string(node, current_sentences);
+        } else if (node.type === 'string') {
+            current_sentences = this._add_string(node.value, current_sentences);
+        } else if (node.type === 'optional') {
+            current_sentences = this._add_optional(node, current_sentences);
+        } else if (node.type === 'choice') {
+            current_sentences = this._add_choice(node, current_sentences);
         }
 
         return current_sentences;
@@ -174,13 +180,36 @@ var Diagram = function() {
         var set1 = current_sentences.slice(0, half);
         var set2 = current_sentences.slice(half, current_sentences.length);
 
-        set1 = this.tester(p.value, set1);
+        set1 = this._add_node(p.value, set1);
         set2 = this._add_string("", set2);
 
         var i = 0;
         for (i=0; i<current_sentences.length; i+=2) {
             current_sentences[i]   = set1[i/2];
             current_sentences[i+1] = set2[i/2];
+        }
+
+        return current_sentences;
+    };
+
+    // }}}
+    // {{{ _add_choice
+    self._add_choice = function(p, current_sentences) {
+        var num_choices = p.value.length;
+        var split = current_sentences.length / num_choices;
+        var sets = [];
+
+        var i = 0;
+        for (i=0; i<num_choices; i+=1) {
+            sets[i] = current_sentences.slice(split*i, split*(i+1));
+            sets[i] = this._add_node(p.value[i], sets[i]);
+        }
+
+        var j = 0;
+        for (i=0; i<split; i+=(num_choices)) {
+            for (j=0; j<num_choices; j+=1) {
+                current_sentences[i+j] = sets[j][i];
+            }
         }
 
         return current_sentences;
