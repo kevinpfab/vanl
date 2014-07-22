@@ -5,6 +5,7 @@
     "dependencies": {
         "express": "*",
         "body-parser": "*",
+        "less-middleware": "*",
         "express3-handlebars": "*",
         "underscore": "*",
         "xml2js": "*",

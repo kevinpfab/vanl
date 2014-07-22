@@ -138,7 +138,7 @@ var Diagram = function() {
         return sentences.filter(function(elem, i) {
             return sentences.indexOf(elem) === i;
         }).map(function(elem) {
-            return elem.replace(/\s+/g, ' ');
+            return elem.replace(/\s+/g, ' ').trim();
         });
     };
 

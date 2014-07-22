@@ -1,7 +1,11 @@
-<form>
-{{#each commands}}
-    {{ CommandString }}
-    <br>
-{{/each}}
-<textarea cols="200" rows="40">{{ new_stuff }}</textarea>
-</form>
+<div class='edit_form'>
+    <form method="POST" action="/submit">
+        <div class='basic_commands'>
+            {{#each basic_commands}}
+                {{> command this}}
+            {{/each}}
+        </div>
+        <div class='personality'>
+        </div>
+    </form>
+</div>
