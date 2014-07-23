@@ -51,16 +51,22 @@ app.post('/edit', function(req, res) {
         file.on('end', function() {
             xml2js.parseString(val, function(err, result) {
                 var basic_commands = {};
-                _.each(result.Profile.Commands[0].Command, function(command, i) {
-                    if (command.Category) {
-                        if (command.Category[0] === BASIC_COMMAND_CATEGORY) {
-                            basic_commands[command.Id[0]] = command;
-                        } else if (command.Category[0] === CUSTOM_CATEGORY) {
-                            // Purge our previous custom commands to make loading faster
-                            result.Profile.Commands[0].Command[i] = null;
+                result.Profile.Commands[0].Command =_.filter(
+                    result.Profile.Commands[0].Command,
+                    function(command, i) {
+                        var keep = true;
+
+                        if (command.Category) {
+                            if (command.Category[0] === BASIC_COMMAND_CATEGORY) {
+                                basic_commands[command.Id[0]] = command;
+                            } else if (command.Category[0] === CUSTOM_CATEGORY) {
+                                keep = false;
+                            }
                         }
+
+                        return keep;
                     }
-                });
+                );
 
                 req.session.result = result;
                 req.session.basic_commands = basic_commands;
@@ -91,7 +97,15 @@ app.post('/submit', function(req, res) {
         if (!inputs[field_id]) {
             inputs[field_id] = {};
         }
-        inputs[field_id][field_key] = val;
+
+        if (field_key === 'structure') {
+            if (!inputs[field_id].structures) {
+                inputs[field_id].structures = [];
+            }
+            inputs[field_id].structures.push(val);
+        } else {
+            inputs[field_id][field_key] = val;
+        }
     });
 
     req.busboy.on('finish', function() {
@@ -138,34 +152,43 @@ app.post('/submit', function(req, res) {
 
         // }}}
 
-        var generator = new Diagram();
-        var variations;
+        var variations = null,
+            num_commands = 0,
+            generator = new Diagram();
         _.each(inputs, function(input, key) {
             var base_command = basic_commands[key];
-            var structure = input.structure;
-            structure = "[Amy] [(engage, turn on, deploy, raise)] [the] [(fucking, god damn)] " + structure + " [(up,down,online,offline)]";
-            variations = generator.generate(structure);
-            console.log("Finished " + variations.length + " variations for: " + input.structure);
+            _.each(input.structures, function(structure) {
+                variations = generator.generate(structure);
 
-            _.each(xml.Profile.Commands[0].Command, function(command) {
-                if (command.Id && command.Id[0] === key) {
-                    command[STRUCTURE_KEY] = [structure];
-                }
-            });
+                console.log("Finished " + variations.length + " variations for: " + input.structure);
 
-            _.each(variations, function(sentence) {
-                console.log("Creating command for " + sentence);
-                if (sentence !== base_command.CommandString[0]) {
-                    xml.Profile.Commands[0].Command.push(
-                        generate_command(key, sentence)
-                    );
-                }
+                _.each(xml.Profile.Commands[0].Command, function(command) {
+                    if (command.Id && command.Id[0] === key) {
+                        if (!command[STRUCTURE_KEY]) {
+                            command[STRUCTURE_KEY] = [];
+                        }
+                        command[STRUCTURE_KEY].push(structure);
+                    }
+                });
+
+                _.each(variations, function(sentence) {
+                    console.log("Creating command for " + sentence);
+                    if (sentence !== base_command.CommandString[0]) {
+                        num_commands += 1;
+
+                        xml.Profile.Commands[0].Command.push(
+                            generate_command(key, sentence)
+                        );
+                    }
+                });
             });
         });
+
         console.log("Getting ready to build XML");
 
         var builder = new xml2js.Builder();
         fs.writeFile(__dirname + '/public/DEV_PROFILE.vap', builder.buildObject(xml), function(err) {
+            console.log('Built profile with ' + num_commands + ' commands');
             res.download(__dirname + '/public/DEV_PROFILE.vap');
         });
     });
