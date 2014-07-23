@@ -1,11 +1,14 @@
 <div class='edit_form'>
     <form method="POST" action="/submit">
         <div class='basic_commands'>
+            <h3>Basic Commands</h3>
+            <p>Commands used for controlling your ship in various ways.</p>
             {{#each basic_commands}}
                 {{> command this}}
             {{/each}}
         </div>
         <div class='personality'>
         </div>
+        <input type="submit" value="Submit">
     </form>
 </div>

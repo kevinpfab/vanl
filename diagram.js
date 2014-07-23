@@ -68,7 +68,7 @@ var Diagram = function() {
                 exit = this._find_choice_exit(remaining);
                 contents = str.substring(i+1, i+exit+1);
 
-                var choices = contents.split(',');
+                var choices = this._split_same_level(contents, ',');
                 tokens.push({
                     type: 'choice',
                     value: choices.map(this._parse.bind(this))
@@ -118,6 +118,35 @@ var Diagram = function() {
         };
 
         return -1;
+    };
+
+    // }}}
+    // {{{ _split_same_level
+    self._split_same_level = function(contents, delim) {
+        var c = 0,
+            i = 0;
+
+        var tokens = [];
+        var last_start = 0;
+        for (i=0; i<contents.length; i+=1) {
+            switch(contents[i]) {
+                case CHOICE_OPEN:
+                    c += 1;
+                    break;
+                case CHOICE_CLOSE:
+                    c -= 1;
+                    break;
+                case delim:
+                    if (c === 0) {
+                        tokens.push(contents.substring(last_start, i));
+                        last_start = i+1;
+                    }
+                    break;
+            }
+        }
+
+        tokens.push(contents.substring(last_start));
+        return tokens;
     };
 
     // }}}
@@ -207,10 +236,9 @@ var Diagram = function() {
         }
 
         var j = 0;
-        for (i=0; i<=split; i+=(num_choices)) {
-            for (j=0; j<num_choices; j+=1) {
-                current_sentences[i+j] = sets[j][i/num_choices];
-            }
+        for (i=0; i<split*num_choices; i+=1) {
+            var cur_set = i % num_choices;
+            current_sentences[i] = sets[cur_set][Math.floor(i/num_choices)];
         }
 
         return current_sentences;

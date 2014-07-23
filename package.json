@@ -4,6 +4,8 @@
     "version":"0.0.1",
     "dependencies": {
         "express": "*",
+        "connect-busboy": "*",
+        "express-session": "*",
         "body-parser": "*",
         "less-middleware": "*",
         "express3-handlebars": "*",
