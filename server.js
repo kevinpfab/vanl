@@ -30,8 +30,9 @@ app.use(ExpressSession({secret: 'DEV_SECRET'}));
 // }}}
 
 // {{{ App Specific Constants
-var STRUCTURE_KEY     = 'VANLStructure';
-var BASIC_COMMAND_KEY = '$BASIC';
+var STRUCTURE_KEY          = 'VANLStructure';
+var BASIC_COMMAND_CATEGORY = 'Base Command';
+var CUSTOM_CATEGORY        = 'VANL';
 
 // }}}
 
@@ -40,29 +41,39 @@ app.get('/', function(req, res) {
 });
 
 app.post('/edit', function(req, res) {
-    var fstream;
     req.pipe(req.busboy);
-    req.busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
-        xml2js.parseString(val, function(err, result) {
 
-            var basic_commands = {};
-            _.each(result.Profile.Commands[0].Command, function(command) {
-                if (command.Category && command.Category[0] === BASIC_COMMAND_KEY) {
-                    basic_commands[command.Id[0]] = command;
-                }
-            });
+    req.busboy.on('file', function(fieldname, file, filename) {
+        var val = "";
+        file.on('data', function(data) {
+            val = val + data;
+        });
+        file.on('end', function() {
+            xml2js.parseString(val, function(err, result) {
+                var basic_commands = {};
+                _.each(result.Profile.Commands[0].Command, function(command, i) {
+                    if (command.Category) {
+                        if (command.Category[0] === BASIC_COMMAND_CATEGORY) {
+                            basic_commands[command.Id[0]] = command;
+                        } else if (command.Category[0] === CUSTOM_CATEGORY) {
+                            // Purge our previous custom commands to make loading faster
+                            result.Profile.Commands[0].Command[i] = null;
+                        }
+                    }
+                });
 
-            req.session.result = result;
-            req.session.basic_commands = basic_commands;
+                req.session.result = result;
+                req.session.basic_commands = basic_commands;
 
-            res.render('form', {
-                basic_commands: _.map(basic_commands, function(command) {
-                    return {
-                        id: command.Id[0],
-                        command_string: command.CommandString[0],
-                        structure: command[STRUCTURE_KEY] ? command[STRUCTURE_KEY][0] : null
-                    };
-                })
+                res.render('form', {
+                    basic_commands: _.map(basic_commands, function(command) {
+                        return {
+                            id: command.Id[0],
+                            command_string: command.CommandString[0],
+                            structure: command[STRUCTURE_KEY] ? command[STRUCTURE_KEY][0] : null
+                        };
+                    })
+                });
             });
         });
     });
@@ -105,22 +116,23 @@ app.post('/submit', function(req, res) {
                         InputMode: ['0']
                     }]
                 }],
-                Async: ['true'],
-                Enabled: ['true'],
-                UseShortcut: ['false'],
-                keyValue: ['0'],
-                keyShift: ['0'],
-                keyAlt: ['0'],
-                keyCtrl: ['0'],
-                keyWin: ['0'],
-                keyPassthru: ['true'],
-                UseSpokenPhrase: ['true'],
-                onlyKeyUp: ['false'],
-                RepeatNumber: ['2'],
-                RepeatType: ['0'],
-                CommandType: ['0'],
-                SourceProfile: ['00000000-0000-0000-0000-000000000000'],
-                Referrer: [{'$': {'xsi:nil': 'true'}}]
+                Category: [CUSTOM_CATEGORY]
+//                Async: ['true'],
+//                Enabled: ['true'],
+//                UseShortcut: ['false'],
+//                keyValue: ['0'],
+//                keyShift: ['0'],
+//                keyAlt: ['0'],
+//                keyCtrl: ['0'],
+//                keyWin: ['0'],
+//                keyPassthru: ['true'],
+//                UseSpokenPhrase: ['true'],
+//                onlyKeyUp: ['false'],
+//                RepeatNumber: ['2'],
+//                RepeatType: ['0'],
+//                CommandType: ['0'],
+//                SourceProfile: ['00000000-0000-0000-0000-000000000000'],
+//                Referrer: [{'$': {'xsi:nil': 'true'}}]
             };
         };
 
@@ -131,8 +143,9 @@ app.post('/submit', function(req, res) {
         _.each(inputs, function(input, key) {
             var base_command = basic_commands[key];
             var structure = input.structure;
+            structure = "[Amy] [(engage, turn on, deploy, raise)] [the] [(fucking, god damn)] " + structure + " [(up,down,online,offline)]";
             variations = generator.generate(structure);
-            console.log(structure);
+            console.log("Finished " + variations.length + " variations for: " + input.structure);
 
             _.each(xml.Profile.Commands[0].Command, function(command) {
                 if (command.Id && command.Id[0] === key) {
@@ -141,6 +154,7 @@ app.post('/submit', function(req, res) {
             });
 
             _.each(variations, function(sentence) {
+                console.log("Creating command for " + sentence);
                 if (sentence !== base_command.CommandString[0]) {
                     xml.Profile.Commands[0].Command.push(
                         generate_command(key, sentence)
@@ -148,11 +162,11 @@ app.post('/submit', function(req, res) {
                 }
             });
         });
+        console.log("Getting ready to build XML");
 
         var builder = new xml2js.Builder();
-        res.render('result', {
-            result: builder.buildObject(xml),
-            variations: variations
+        fs.writeFile(__dirname + '/public/DEV_PROFILE.vap', builder.buildObject(xml), function(err) {
+            res.download(__dirname + '/public/DEV_PROFILE.vap');
         });
     });
 });
