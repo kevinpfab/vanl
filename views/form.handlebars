@@ -12,3 +12,25 @@
         <input type="submit" value="Submit">
     </form>
 </div>
+<script>
+    $('.add_command').on('click', function(e) {
+        var $target = $(e.currentTarget);
+        var $command = $target.closest('.command');
+        var $inputs = $('.inputs', $command);
+        var $last = $inputs.children().last();
+
+        var name = $last.attr('name').split('_');
+        name.push((parseInt(name.pop()) + 1));
+        var new_name = name.join('_');
+        var $new = $('<input>').attr({
+            name: new_name
+        });
+
+        $inputs.append($new);
+    });
+
+    $('.remove_command').on('click', function(e) {
+        var $target = $(e.currentTarget);
+        $('.inputs', $target.closest('.command')).children().last().remove();
+    });
+</script>

@@ -30,9 +30,11 @@ app.use(ExpressSession({secret: 'DEV_SECRET'}));
 // }}}
 
 // {{{ App Specific Constants
-var STRUCTURE_KEY          = 'VANLStructure';
-var BASIC_COMMAND_CATEGORY = 'Base Command';
+var STRUCTURE_KEY          = 'Description';
+var BASIC_COMMAND_CATEGORY = '$Base';
 var CUSTOM_CATEGORY        = 'VANL';
+var BASE_PROFILE           = __dirname + '/public/BASE_PROFILE.vap';
+var COMPILED_PROFILE       = __dirname + '/public/COMPILED_PROFILE.vap';
 
 // }}}
 
@@ -76,7 +78,7 @@ app.post('/edit', function(req, res) {
                         return {
                             id: command.Id[0],
                             command_string: command.CommandString[0],
-                            structure: command[STRUCTURE_KEY] ? command[STRUCTURE_KEY][0] : null
+                            structures: command[STRUCTURE_KEY] ? JSON.parse(command[STRUCTURE_KEY][0]) : []
                         };
                     })
                 });
@@ -157,46 +159,69 @@ app.post('/submit', function(req, res) {
             generator = new Diagram();
         _.each(inputs, function(input, key) {
             var base_command = basic_commands[key];
-            _.each(input.structures, function(structure) {
-                variations = generator.generate(structure);
-
-                console.log("Finished " + variations.length + " variations for: " + input.structure);
-
-                _.each(xml.Profile.Commands[0].Command, function(command) {
-                    if (command.Id && command.Id[0] === key) {
-                        if (!command[STRUCTURE_KEY]) {
-                            command[STRUCTURE_KEY] = [];
-                        }
-                        command[STRUCTURE_KEY].push(structure);
-                    }
-                });
-
-                _.each(variations, function(sentence) {
-                    console.log("Creating command for " + sentence);
-                    if (sentence !== base_command.CommandString[0]) {
-                        num_commands += 1;
-
-                        xml.Profile.Commands[0].Command.push(
-                            generate_command(key, sentence)
-                        );
-                    }
-                });
+            var serialized_structure = JSON.stringify(input.structures);
+            _.each(xml.Profile.Commands[0].Command, function(command) {
+                if (command.Id && command.Id[0] === key) {
+                    command[STRUCTURE_KEY] = serialized_structure;
+                }
             });
+
         });
 
-        console.log("Getting ready to build XML");
-
+        // Build original profile first
         var builder = new xml2js.Builder();
-        fs.writeFile(__dirname + '/public/DEV_PROFILE.vap', builder.buildObject(xml), function(err) {
-            console.log('Built profile with ' + num_commands + ' commands');
-            res.download(__dirname + '/public/DEV_PROFILE.vap');
+
+        fs.writeFile(BASE_PROFILE, builder.buildObject(xml), function(err) {
+            console.log('Saved base profile with sentence structures');
+
+
+            _.each(inputs, function(input, key) {
+                var base_command = basic_commands[key];
+                _.each(input.structures, function(structure) {
+                    variations = generator.generate(structure);
+
+                    console.log("Finished " + variations.length + " variations for: " + structure);
+
+                    _.each(variations, function(sentence) {
+
+                        console.log("Creating command for " + sentence);
+
+                        if (sentence !== base_command.CommandString[0]) {
+                            num_commands += 1;
+
+                            xml.Profile.Commands[0].Command.push(
+                                generate_command(key, sentence)
+                            );
+                        }
+                    });
+                });
+            });
+
+            console.log("Getting ready to build compiled profile...");
+
+            fs.writeFile(COMPILED_PROFILE, builder.buildObject(xml), function(err) {
+                console.log('Built profile with ' + num_commands + ' commands');
+                res.render('result');
+            });
         });
     });
 });
 
+app.get('/result', function(req, res) {
+    res.render('result');
+});
+
+app.get('/download/base_profile', function(req, res) {
+    res.download(BASE_PROFILE);
+});
+
+app.get('/download/compiled_profile', function(req, res) {
+    res.download(COMPILED_PROFILE);
+});
+
 app.get('/test', function(req, res) {
-    var test_string = "[Amy] [(engage,turn on,deploy,raise,bring)] Shields [(up,on,online)] [please] [(some,more [crazy],[(text,again)] with)] (maybe,yes,no)";
-    res.render('result', {
+    var test_string = "(balance [the [(fucking, god damn)]] power, even [out the [(fucking, god damn)]] power [distribution])";
+    res.render('test', {
         result: '',
         variations: (new Diagram()).generate(test_string)
     });
