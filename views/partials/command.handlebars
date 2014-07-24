@@ -1,11 +1,28 @@
 <div class='command'>
     <h4>{{ command_string }}</h4>
-    <div class='inputs'>
+    <div class='inputs structure'>
         {{#each structures}}
             <input type="text" value="{{this}}" name="{{ ../id }}_structure_{{@index}}">
         {{else}}
             <input type="text" value="{{command_string}}" name="{{ ../id }}_structure_0">
         {{/each}}
+        <p>
+            <a class='add' href='javascript:void(0)'>Add Command...</a> or
+            {{#if multiple_structures}}
+                <a class='remove' href='javascript:void(0)' {{#unless multiple_structures}}style="display: none;"{{/unless}}>Remove Command</a>
+            {{/if}}
+        </p>
     </div>
-    <p><a class='add_command' href='javascript:void(0)'>Add Command...</a> or <a class='remove_command' href='javascript:void(0)'>Remove Command</a></p>
+    <div class='inputs tts'>
+        <p><b>Text-to-Speech Responses</b></p>
+        {{#each tts}}
+            <input type="text" value="{{this}}" name="{{ ../id }}_tts_{{@index}}">
+        {{else}}
+            <input type="text" value="" name="{{ ../id }}_tts_0">
+        {{/each}}
+        <p>
+            <a class='add' href='javascript:void(0)'>Add TTS...</a> or
+            <a class='remove' href='javascript:void(0)' {{#unless multiple_tts}}style="display: none;"{{/unless}}>Remove TTS</a>
+        </p>
+    </div>
 </div>

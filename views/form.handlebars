@@ -13,11 +13,10 @@
     </form>
 </div>
 <script>
-    $('.add_command').on('click', function(e) {
+    $('.add').on('click', function(e) {
         var $target = $(e.currentTarget);
-        var $command = $target.closest('.command');
-        var $inputs = $('.inputs', $command);
-        var $last = $inputs.children().last();
+        var $inputs = $target.closest('.inputs');
+        var $last = $inputs.children('input').last();
 
         var name = $last.attr('name').split('_');
         name.push((parseInt(name.pop()) + 1));
@@ -26,11 +25,19 @@
             name: new_name
         });
 
-        $inputs.append($new);
+        $last.after($new);
+
+        console.log($inputs.children('input').length);
+        if ($inputs.children('input').length > 1) {
+            $('.remove', $target.closest('p')).show();
+        }
     });
 
-    $('.remove_command').on('click', function(e) {
+    $('.remove').on('click', function(e) {
         var $target = $(e.currentTarget);
-        $('.inputs', $target.closest('.command')).children().last().remove();
+        $target.closest('.inputs').children('input').last().remove();
+        if ($target.closest('.inputs').children('input').length <= 1) {
+            $target.hide();
+        }
     });
 </script>

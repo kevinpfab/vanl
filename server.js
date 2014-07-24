@@ -33,6 +33,7 @@ app.use(ExpressSession({secret: 'DEV_SECRET'}));
 var STRUCTURE_KEY          = 'Description';
 var BASIC_COMMAND_CATEGORY = '$Base';
 var CUSTOM_CATEGORY        = 'VANL';
+var TTS_TYPE               = 'Say';
 var BASE_PROFILE           = __dirname + '/public/BASE_PROFILE.vap';
 var COMPILED_PROFILE       = __dirname + '/public/COMPILED_PROFILE.vap';
 
@@ -75,10 +76,26 @@ app.post('/edit', function(req, res) {
 
                 res.render('form', {
                     basic_commands: _.map(basic_commands, function(command) {
+                        var tts = [];
+                        command.ActionSequence.every(function(action) {
+                            return action.CommandAction.every(function(a) {
+                                if (a.ActionType[0] === TTS_TYPE) {
+                                    tts = a.Context[0].split(";");
+                                    return false;
+                                }
+                                return true;
+                            });
+                        });
+
+                        var structures = command[STRUCTURE_KEY] ? JSON.parse(command[STRUCTURE_KEY][0]) : [];
+
                         return {
                             id: command.Id[0],
                             command_string: command.CommandString[0],
-                            structures: command[STRUCTURE_KEY] ? JSON.parse(command[STRUCTURE_KEY][0]) : []
+                            structures: structures,
+                            multiple_structures: structures.length > 1,
+                            tts: tts,
+                            multiple_tts: tts.length > 1
                         };
                     })
                 });
@@ -105,6 +122,14 @@ app.post('/submit', function(req, res) {
                 inputs[field_id].structures = [];
             }
             inputs[field_id].structures.push(val);
+        } else if (field_key === 'tts') {
+            if (!inputs[field_id].tts) {
+                inputs[field_id].tts = [];
+            }
+            val = val.trim();
+            if (val !== "") {
+                inputs[field_id].tts.push(val);
+            }
         } else {
             inputs[field_id][field_key] = val;
         }
@@ -160,12 +185,25 @@ app.post('/submit', function(req, res) {
         _.each(inputs, function(input, key) {
             var base_command = basic_commands[key];
             var serialized_structure = JSON.stringify(input.structures);
+            var joined_tts = (input.tts && input.tts.length > 0) ? input.tts.join(";") : null;
             _.each(xml.Profile.Commands[0].Command, function(command) {
                 if (command.Id && command.Id[0] === key) {
                     command[STRUCTURE_KEY] = serialized_structure;
+
+                    if (joined_tts) {
+                        // Find the first tts command
+                        command.ActionSequence.every(function(action) {
+                            return action.CommandAction.every(function(a) {
+                                if (a.ActionType[0] === TTS_TYPE) {
+                                    a.Context[0] = joined_tts;
+                                    return false;
+                                }
+                                return true;
+                            });
+                        });
+                    }
                 }
             });
-
         });
 
         // Build original profile first
@@ -179,7 +217,7 @@ app.post('/submit', function(req, res) {
                 var all_variations = [];
                 _.each(input.structures, function(structure) {
                     all_variations = all_variations.concat(generator.generate(structure));
-                    console.log("Finished " + variations.length + " variations for: " + structure);
+                    console.log("Finished " + all_variations.length + " variations for: " + structure);
                 });
 
                 xml.Profile.Commands[0].Command.push(
