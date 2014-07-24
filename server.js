@@ -174,27 +174,17 @@ app.post('/submit', function(req, res) {
         fs.writeFile(BASE_PROFILE, builder.buildObject(xml), function(err) {
             console.log('Saved base profile with sentence structures');
 
-
             _.each(inputs, function(input, key) {
                 var base_command = basic_commands[key];
+                var all_variations = [];
                 _.each(input.structures, function(structure) {
-                    variations = generator.generate(structure);
-
+                    all_variations = all_variations.concat(generator.generate(structure));
                     console.log("Finished " + variations.length + " variations for: " + structure);
-
-                    _.each(variations, function(sentence) {
-
-                        console.log("Creating command for " + sentence);
-
-                        if (sentence !== base_command.CommandString[0]) {
-                            num_commands += 1;
-
-                            xml.Profile.Commands[0].Command.push(
-                                generate_command(key, sentence)
-                            );
-                        }
-                    });
                 });
+
+                xml.Profile.Commands[0].Command.push(
+                    generate_command(key, all_variations.join(";"))
+                );
             });
 
             console.log("Getting ready to build compiled profile...");
