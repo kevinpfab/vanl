@@ -21,7 +21,7 @@
         var name = $last.attr('name').split('_');
         var id = name[0];
         var field_name = name[1];
-        var index = parseInt(2) + 1;
+        var index = parseInt(name[2]) + 1;
 
         if ($inputs.hasClass('tts')) {
             var $new_phrase = $('<input>').attr({

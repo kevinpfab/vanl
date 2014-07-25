@@ -214,8 +214,11 @@ app.post('/submit', function(req, res) {
             if (input.tts && _.keys(input.tts).length > 0) {
                 joined_tts = _.reduce(input.tts, function(memo, value) {
                     var percent = parseFloat(value.percent) + 0.01;
+                    if (!percent || isNaN(percent)) {
+                        percent = 0.01;
+                    }
                     if (value.phrase) {
-                        return  memo + (new Array(percent*100)).join(value.phrase + ';');
+                        return  memo + (new Array(Math.floor(percent*100))).join(value.phrase + ';');
                     } else {
                         return memo;
                     }
@@ -251,8 +254,9 @@ app.post('/submit', function(req, res) {
                 var base_command = basic_commands[key];
                 var all_variations = [];
                 _.each(input.structures, function(structure) {
+                    var prev_length = all_variations.length;
                     all_variations = all_variations.concat(generator.generate(structure));
-                    console.log("Finished " + all_variations.length + " variations for: " + structure);
+                    console.log("Finished " + (all_variations.length - prev_length) + " variations for: " + structure);
                 });
 
                 xml.Profile.Commands[0].Command.push(
