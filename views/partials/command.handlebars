@@ -16,9 +16,11 @@
     <div class='inputs tts'>
         <p><b>Text-to-Speech Responses</b></p>
         {{#each tts}}
-            <input type="text" value="{{this}}" name="{{ ../id }}_tts_{{@index}}">
+            <input type="text" class="phrase" value="{{phrase}}" name="{{ ../id }}_tts_{{@index}}">
+            <input type="text" class="percent" value="{{percent}}" name="{{ ../id }}_ttspercent_{{@index}}">
         {{else}}
-            <input type="text" value="" name="{{ ../id }}_tts_0">
+            <input type="text" class="phrase" value="" name="{{ ../id }}_tts_0">
+            <input type="text" class="percent" value="0.01" name="{{ ../id }}_ttspercent_{{@index}}">
         {{/each}}
         <p>
             <a class='add' href='javascript:void(0)'>Add TTS...</a> or

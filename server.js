@@ -87,6 +87,22 @@ app.post('/edit', function(req, res) {
                             });
                         });
 
+                        var mapped_tts = {};
+                        _.each(tts, function(phrase) {
+                            if (phrase) {
+                                if (mapped_tts[phrase]) {
+                                    mapped_tts[phrase] = mapped_tts[phrase] + 1;
+                                } else {
+                                    mapped_tts[phrase] = 1;
+                                }
+                            }
+                        });
+
+                        var tts_arr = [];
+                        _.each(mapped_tts, function(value, key) {
+                            tts_arr.push({phrase: key, percent: (value/100)});
+                        });
+
                         var structures = command[STRUCTURE_KEY] ? JSON.parse(command[STRUCTURE_KEY][0]) : [];
 
                         return {
@@ -94,8 +110,8 @@ app.post('/edit', function(req, res) {
                             command_string: command.CommandString[0],
                             structures: structures,
                             multiple_structures: structures.length > 1,
-                            tts: tts,
-                            multiple_tts: tts.length > 1
+                            tts: tts_arr,
+                            multiple_tts: tts_arr.length > 1
                         };
                     })
                 });
@@ -112,6 +128,7 @@ app.post('/submit', function(req, res) {
         var field_parts = fieldname.split('_');
         var field_id = field_parts[0];
         var field_key = field_parts[1];
+        var field_index = field_parts[2];
 
         if (!inputs[field_id]) {
             inputs[field_id] = {};
@@ -124,12 +141,20 @@ app.post('/submit', function(req, res) {
             inputs[field_id].structures.push(val);
         } else if (field_key === 'tts') {
             if (!inputs[field_id].tts) {
-                inputs[field_id].tts = [];
+                inputs[field_id].tts = {};
             }
             val = val.trim();
             if (val !== "") {
-                inputs[field_id].tts.push(val);
+                if (!inputs[field_id].tts[field_index]) {
+                    inputs[field_id].tts[field_index] = {};
+                }
+                inputs[field_id].tts[field_index].phrase = val;
             }
+        } else if (field_key === 'ttspercent') {
+            if (!inputs[field_id].tts[field_index]) {
+                inputs[field_id].tss[field_index] = {};
+            }
+            inputs[field_id].tts[field_index].percent = val;
         } else {
             inputs[field_id][field_key] = val;
         }
@@ -185,7 +210,13 @@ app.post('/submit', function(req, res) {
         _.each(inputs, function(input, key) {
             var base_command = basic_commands[key];
             var serialized_structure = JSON.stringify(input.structures);
-            var joined_tts = (input.tts && input.tts.length > 0) ? input.tts.join(";") : null;
+            var joined_tts = null;
+            if (input.tts && _.keys(input.tts).length > 0) {
+                joined_tts = _.reduce(input.tts, function(memo, value) {
+                    var percent = parseFloat(value.percent) + 0.01;
+                    return  memo + (new Array(percent*100)).join(value.phrase + ';');
+                }, "");
+            }
             _.each(xml.Profile.Commands[0].Command, function(command) {
                 if (command.Id && command.Id[0] === key) {
                     command[STRUCTURE_KEY] = serialized_structure;

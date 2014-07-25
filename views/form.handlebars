@@ -19,15 +19,33 @@
         var $last = $inputs.children('input').last();
 
         var name = $last.attr('name').split('_');
-        name.push((parseInt(name.pop()) + 1));
-        var new_name = name.join('_');
-        var $new = $('<input>').attr({
-            name: new_name
-        });
+        var id = name[0];
+        var field_name = name[1];
+        var index = parseInt(2) + 1;
 
-        $last.after($new);
+        if ($inputs.hasClass('tts')) {
+            var $new_phrase = $('<input>').attr({
+                type: "text",
+                name: id + "_tts_" + index,
+                class: "phrase"
+            });
+            var $new_percent = $('<input>').attr({
+                type: "text",
+                name: id + "_ttspercent_" + index,
+                class: "percent"
+            });
 
-        console.log($inputs.children('input').length);
+            $last.after($new_phrase);
+            $new_phrase.after($new_percent);
+        } else {
+            var $new = $('<input>').attr({
+                type: "text",
+                name: id + "_" + field_name + "_" + index
+            });
+
+            $last.after($new);
+        }
+
         if ($inputs.children('input').length > 1) {
             $('.remove', $target.closest('p')).show();
         }
@@ -35,7 +53,14 @@
 
     $('.remove').on('click', function(e) {
         var $target = $(e.currentTarget);
-        $target.closest('.inputs').children('input').last().remove();
+        var $inputs = $target.closest('.inputs');
+        if ($inputs.hasClass('tts')) {
+            $inputs.children('input.phrase').last().remove();
+            $inputs.children('input.percent').last().remove();
+        } else {
+            $inputs.children('input').last().remove();
+        }
+
         if ($target.closest('.inputs').children('input').length <= 1) {
             $target.hide();
         }
