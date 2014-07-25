@@ -34,6 +34,7 @@ var STRUCTURE_KEY          = 'Description';
 var BASIC_COMMAND_CATEGORY = '$Base';
 var CUSTOM_CATEGORY        = 'VANL';
 var TTS_TYPE               = 'Say';
+var SILENT_TTS             = '$SILENT';
 var BASE_PROFILE           = __dirname + '/public/BASE_PROFILE.vap';
 var COMPILED_PROFILE       = __dirname + '/public/COMPILED_PROFILE.vap';
 
@@ -60,7 +61,7 @@ app.post('/edit', function(req, res) {
                         var keep = true;
 
                         if (command.Category) {
-                            if (command.Category[0] === BASIC_COMMAND_CATEGORY) {
+                            if (command.Category[0].indexOf( BASIC_COMMAND_CATEGORY) === 0) {
                                 basic_commands[command.Id[0]] = command;
                             } else if (command.Category[0] === CUSTOM_CATEGORY) {
                                 keep = false;
@@ -100,6 +101,9 @@ app.post('/edit', function(req, res) {
 
                         var tts_arr = [];
                         _.each(mapped_tts, function(value, key) {
+                            if (key === ' ') {
+                                key = SILENT_TTS;
+                            }
                             tts_arr.push({phrase: key, percent: (value/100)});
                         });
 
@@ -132,28 +136,24 @@ app.post('/submit', function(req, res) {
 
         if (!inputs[field_id]) {
             inputs[field_id] = {};
+            inputs[field_id].tts = {};
+            inputs[field_id].structures = [];
+        }
+
+        if (!inputs[field_id].tts[field_index]) {
+            inputs[field_id].tts[field_index] = {};
         }
 
         if (field_key === 'structure') {
-            if (!inputs[field_id].structures) {
-                inputs[field_id].structures = [];
-            }
             inputs[field_id].structures.push(val);
         } else if (field_key === 'tts') {
-            if (!inputs[field_id].tts) {
-                inputs[field_id].tts = {};
-            }
             val = val.trim();
-            if (val !== "") {
-                if (!inputs[field_id].tts[field_index]) {
-                    inputs[field_id].tts[field_index] = {};
-                }
+            if (val === SILENT_TTS) {
+                inputs[field_id].tts[field_index].phrase = ' ';
+            } else if (val !== "") {
                 inputs[field_id].tts[field_index].phrase = val;
             }
         } else if (field_key === 'ttspercent') {
-            if (!inputs[field_id].tts[field_index]) {
-                inputs[field_id].tss[field_index] = {};
-            }
             inputs[field_id].tts[field_index].percent = val;
         } else {
             inputs[field_id][field_key] = val;
@@ -214,7 +214,11 @@ app.post('/submit', function(req, res) {
             if (input.tts && _.keys(input.tts).length > 0) {
                 joined_tts = _.reduce(input.tts, function(memo, value) {
                     var percent = parseFloat(value.percent) + 0.01;
-                    return  memo + (new Array(percent*100)).join(value.phrase + ';');
+                    if (value.phrase) {
+                        return  memo + (new Array(percent*100)).join(value.phrase + ';');
+                    } else {
+                        return memo;
+                    }
                 }, "");
             }
             _.each(xml.Profile.Commands[0].Command, function(command) {
